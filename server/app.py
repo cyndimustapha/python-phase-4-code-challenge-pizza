@@ -33,14 +33,19 @@ class RestaurantListResource(Resource):
 
 class RestaurantResource(Resource):
     def get(self, id):
-        restaurant = Restaurant.query.get_or_404(id)
+        restaurant = Restaurant.query.get(id)
+        if restaurant is None:
+            return {"error": "Restaurant not found"}, 404
         return jsonify(restaurant.to_dict())
 
     def delete(self, id):
-        restaurant = Restaurant.query.get_or_404(id)
+        restaurant = Restaurant.query.get(id)
+        if restaurant is None:
+            return {"error": "Restaurant not found"}, 404
         db.session.delete(restaurant)
         db.session.commit()
         return '', 204
+
 
 class PizzaListResource(Resource):
     def get(self):
@@ -55,8 +60,14 @@ class RestaurantPizzaResource(Resource):
         parser.add_argument('restaurant_id', type=int, required=True, help='Restaurant ID is required')
         args = parser.parse_args()
 
-        pizza = Pizza.query.get_or_404(args['pizza_id'])
-        restaurant = Restaurant.query.get_or_404(args['restaurant_id'])
+        if args['price'] < 1 or args['price'] > 30:
+            return {"error": "Price must be between 1 and 30"}, 400
+
+        pizza = Pizza.query.get(args['pizza_id'])
+        restaurant = Restaurant.query.get(args['restaurant_id'])
+
+        if pizza is None or restaurant is None:
+            return {"error": "Pizza or Restaurant not found"}, 404
 
         restaurant_pizza = RestaurantPizza(price=args['price'], pizza=pizza, restaurant=restaurant)
         db.session.add(restaurant_pizza)

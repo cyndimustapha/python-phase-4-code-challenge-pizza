@@ -46,7 +46,6 @@ class RestaurantResource(Resource):
         db.session.commit()
         return '', 204
 
-
 class PizzaListResource(Resource):
     def get(self):
         pizzas = Pizza.query.all()
@@ -61,13 +60,13 @@ class RestaurantPizzaResource(Resource):
         args = parser.parse_args()
 
         if args['price'] < 1 or args['price'] > 30:
-            return {"error": "Price must be between 1 and 30"}, 400
+            return {"errors": ["Price must be between 1 and 30"]}, 400
 
         pizza = Pizza.query.get(args['pizza_id'])
         restaurant = Restaurant.query.get(args['restaurant_id'])
 
         if pizza is None or restaurant is None:
-            return {"error": "Pizza or Restaurant not found"}, 404
+            return {"errors": ["Pizza or Restaurant not found"]}, 404
 
         restaurant_pizza = RestaurantPizza(price=args['price'], pizza=pizza, restaurant=restaurant)
         db.session.add(restaurant_pizza)

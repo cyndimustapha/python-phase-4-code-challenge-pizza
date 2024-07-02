@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 from models import db, Restaurant, RestaurantPizza, Pizza
 from flask_migrate import Migrate
-from flask import Flask, request, make_response
-from flask_restful import Api, Resource
+from flask import Flask, request, jsonify
+from flask_restful import Api, Resource, reqparse
 import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -31,7 +31,6 @@ class RestaurantListResource(Resource):
         db.session.commit()
         return jsonify(restaurant.to_dict()), 201
 
-
 class RestaurantResource(Resource):
     def get(self, id):
         restaurant = Restaurant.query.get_or_404(id)
@@ -43,12 +42,10 @@ class RestaurantResource(Resource):
         db.session.commit()
         return '', 204
 
-
 class PizzaListResource(Resource):
     def get(self):
         pizzas = Pizza.query.all()
         return jsonify([pizza.to_dict() for pizza in pizzas])
-
 
 class RestaurantPizzaResource(Resource):
     def post(self):
@@ -66,17 +63,15 @@ class RestaurantPizzaResource(Resource):
         db.session.commit()
 
         return jsonify(restaurant_pizza.to_dict()), 201
-    
+
 api.add_resource(RestaurantListResource, '/restaurants')
 api.add_resource(RestaurantResource, '/restaurants/<int:id>')
 api.add_resource(PizzaListResource, '/pizzas')
 api.add_resource(RestaurantPizzaResource, '/restaurant_pizzas')
 
-
 @app.route("/")
 def index():
     return "<h1>Code challenge</h1>"
-
 
 if __name__ == "__main__":
     app.run(port=5555, debug=True)

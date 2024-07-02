@@ -19,6 +19,59 @@ db.init_app(app)
 
 api = Api(app)
 
+class RestaurantListResource(Resource):
+    def get(self):
+        restaurants = Restaurant.query.all()
+        return jsonify([restaurant.to_dict() for restaurant in restaurants])
+
+    def post(self):
+        data = request.get_json()
+        restaurant = Restaurant(name=data['name'], address=data['address'])
+        db.session.add(restaurant)
+        db.session.commit()
+        return jsonify(restaurant.to_dict()), 201
+
+
+class RestaurantResource(Resource):
+    def get(self, id):
+        restaurant = Restaurant.query.get_or_404(id)
+        return jsonify(restaurant.to_dict())
+
+    def delete(self, id):
+        restaurant = Restaurant.query.get_or_404(id)
+        db.session.delete(restaurant)
+        db.session.commit()
+        return '', 204
+
+
+class PizzaListResource(Resource):
+    def get(self):
+        pizzas = Pizza.query.all()
+        return jsonify([pizza.to_dict() for pizza in pizzas])
+
+
+class RestaurantPizzaResource(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('price', type=int, required=True, help='Price is required')
+        parser.add_argument('pizza_id', type=int, required=True, help='Pizza ID is required')
+        parser.add_argument('restaurant_id', type=int, required=True, help='Restaurant ID is required')
+        args = parser.parse_args()
+
+        pizza = Pizza.query.get_or_404(args['pizza_id'])
+        restaurant = Restaurant.query.get_or_404(args['restaurant_id'])
+
+        restaurant_pizza = RestaurantPizza(price=args['price'], pizza=pizza, restaurant=restaurant)
+        db.session.add(restaurant_pizza)
+        db.session.commit()
+
+        return jsonify(restaurant_pizza.to_dict()), 201
+    
+api.add_resource(RestaurantListResource, '/restaurants')
+api.add_resource(RestaurantResource, '/restaurants/<int:id>')
+api.add_resource(PizzaListResource, '/pizzas')
+api.add_resource(RestaurantPizzaResource, '/restaurant_pizzas')
+
 
 @app.route("/")
 def index():

@@ -21,13 +21,15 @@ class Restaurant(db.Model):
     # Add relationship
     restaurant_pizzas = db.relationship('RestaurantPizza', back_populates='restaurant', cascade='all, delete-orphan')
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_pizzas=False):
+        data = {
             'id': self.id,
             'name': self.name,
-            'address': self.address,
-            'restaurant_pizzas': [rp.to_dict() for rp in self.restaurant_pizzas] 
+            'address': self.address
         }
+        if include_pizzas:
+            data['restaurant_pizzas'] = [rp.to_dict() for rp in self.restaurant_pizzas]
+        return data
 
 class Pizza(db.Model, SerializerMixin):
     __tablename__ = "pizzas"
@@ -63,8 +65,10 @@ class RestaurantPizza(db.Model, SerializerMixin):
         return {
             'id': self.id,
             'price': self.price,
+            'pizza_id': self.pizza_id,
             'restaurant_id': self.restaurant_id,
-            'pizza_id': self.pizza_id
+            'pizza': self.pizza.to_dict(), 
+            'restaurant': self.restaurant.to_dict() 
         }
 
     @validates('price')

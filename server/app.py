@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 from models import db, Restaurant, RestaurantPizza, Pizza
 from flask_migrate import Migrate
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, make_response
 from flask_restful import Api, Resource, reqparse
 import os
 
@@ -33,15 +32,17 @@ class RestaurantListResource(Resource):
 
 class RestaurantResource(Resource):
     def get(self, id):
-        restaurant = Restaurant.query.get(id)
+        restaurant = db.session.get(Restaurant, id)
         if restaurant is None:
             return {"error": "Restaurant not found"}, 404
-        return jsonify(restaurant.to_dict())
+        return jsonify(restaurant.to_dict(include_pizzas=True))
 
     def delete(self, id):
-        restaurant = Restaurant.query.get(id)
+        restaurant = db.session.get(Restaurant, id)
         if restaurant is None:
             return {"error": "Restaurant not found"}, 404
+
+        RestaurantPizza.query.filter_by(restaurant_id=id).delete()
         db.session.delete(restaurant)
         db.session.commit()
         return '', 204
@@ -52,27 +53,33 @@ class PizzaListResource(Resource):
         return jsonify([pizza.to_dict() for pizza in pizzas])
 
 class RestaurantPizzaResource(Resource):
+    def get(self):
+        restaurant_pizzas = []
+        for restaurant_pizza in RestaurantPizza.query.all():
+            restaurant_pizza_dict = restaurant_pizza.to_dict()
+            restaurant_pizzas.append(restaurant_pizza_dict)
+        response = make_response(restaurant_pizzas, 200)
+        return response
+
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('price', type=int, required=True, help='Price is required')
-        parser.add_argument('pizza_id', type=int, required=True, help='Pizza ID is required')
-        parser.add_argument('restaurant_id', type=int, required=True, help='Restaurant ID is required')
-        args = parser.parse_args()
+        json_data = request.get_json()
+        try:
+            new_restaurant_pizza = RestaurantPizza(
+                price=json_data.get("price"),
+                restaurant_id=json_data.get("restaurant_id"),
+                pizza_id=json_data.get("pizza_id")
+            )
+        except ValueError as exc:
+            response_body = {"errors": ["validation errors"]}
+            status = 400
+            return (response_body, status)
 
-        if args['price'] < 1 or args['price'] > 30:
-            return {"errors": ["Price must be between 1 and 30"]}, 400
-
-        pizza = Pizza.query.get(args['pizza_id'])
-        restaurant = Restaurant.query.get(args['restaurant_id'])
-
-        if pizza is None or restaurant is None:
-            return {"errors": ["Pizza or Restaurant not found"]}, 404
-
-        restaurant_pizza = RestaurantPizza(price=args['price'], pizza=pizza, restaurant=restaurant)
-        db.session.add(restaurant_pizza)
+        db.session.add(new_restaurant_pizza)
         db.session.commit()
 
-        return jsonify(restaurant_pizza.to_dict()), 201
+        restaurant_pizza_dict = new_restaurant_pizza.to_dict()
+        response = make_response(restaurant_pizza_dict, 201)
+        return response
 
 api.add_resource(RestaurantListResource, '/restaurants')
 api.add_resource(RestaurantResource, '/restaurants/<int:id>')
